@@ -17,6 +17,7 @@ const { sortFolder, getAllRequestsInFolderRecursively } = require('./helper');
 const { getPreferences } = require('../../store/preferences');
 const { getProcessEnvVars } = require('../../store/process-env');
 const { getBrunoConfig } = require('../../store/bruno-config');
+const { makeAxiosInstance } = require('./axios-instance');
 
 // override the default escape function to prevent escaping
 Mustache.escape = function (value) {
@@ -128,6 +129,8 @@ const registerNetworkIpc = (mainWindow) => {
       const request = prepareRequest(_request);
       const envVars = getEnvVars(environment);
       const processEnvVars = getProcessEnvVars(collectionUid);
+      const brunoConfig = getBrunoConfig(collectionUid);
+      const allowScriptFilesystemAccess = get(brunoConfig, 'filesystemAccess.allow', false);
 
       try {
         // make axios work in node using form data
@@ -176,7 +179,8 @@ const registerNetworkIpc = (mainWindow) => {
             collectionVariables,
             collectionPath,
             onConsoleLog,
-            processEnvVars
+            processEnvVars,
+            allowScriptFilesystemAccess
           );
 
           mainWindow.webContents.send('main:script-environment-update', {
@@ -188,7 +192,6 @@ const registerNetworkIpc = (mainWindow) => {
         }
 
         // proxy configuration
-        const brunoConfig = getBrunoConfig(collectionUid);
         const proxyEnabled = get(brunoConfig, 'proxy.enabled', false);
         if (proxyEnabled) {
           const proxyProtocol = get(brunoConfig, 'proxy.protocol');
@@ -262,7 +265,10 @@ const registerNetworkIpc = (mainWindow) => {
           });
         }
 
-        const response = await axios(request);
+        const axiosInstance = makeAxiosInstance();
+
+        /** @type {import('axios').AxiosResponse} */
+        const response = await axiosInstance(request);
 
         // run post-response vars
         const postResponseVars = get(request, 'vars.res', []);
@@ -300,7 +306,8 @@ const registerNetworkIpc = (mainWindow) => {
             collectionVariables,
             collectionPath,
             onConsoleLog,
-            processEnvVars
+            processEnvVars,
+            allowScriptFilesystemAccess
           );
 
           mainWindow.webContents.send('main:script-environment-update', {
@@ -345,7 +352,8 @@ const registerNetworkIpc = (mainWindow) => {
             collectionVariables,
             collectionPath,
             onConsoleLog,
-            processEnvVars
+            processEnvVars,
+            allowScriptFilesystemAccess
           );
 
           mainWindow.webContents.send('main:run-request-event', {
@@ -365,12 +373,16 @@ const registerNetworkIpc = (mainWindow) => {
         }
 
         deleteCancelToken(cancelTokenUid);
+        // Prevents the duration on leaking to the actual result
+        const requestDuration = response.headers.get('request-duration');
+        response.headers.delete('request-duration');
 
         return {
           status: response.status,
           statusText: response.statusText,
           headers: response.headers,
-          data: response.data
+          data: response.data,
+          duration: requestDuration
         };
       } catch (error) {
         // todo: better error handling
@@ -419,7 +431,8 @@ const registerNetworkIpc = (mainWindow) => {
               collectionVariables,
               collectionPath,
               onConsoleLog,
-              processEnvVars
+              processEnvVars,
+              allowScriptFilesystemAccess
             );
 
             mainWindow.webContents.send('main:run-request-event', {
@@ -438,11 +451,15 @@ const registerNetworkIpc = (mainWindow) => {
             });
           }
 
+          // Prevents the duration from leaking to the actual result
+          const requestDuration = error.response.headers.get('request-duration');
+          error.response.headers.delete('request-duration');
           return {
             status: error.response.status,
             statusText: error.response.statusText,
             headers: error.response.headers,
-            data: error.response.data
+            data: error.response.data,
+            duration: requestDuration ?? 0
           };
         }
 
@@ -505,6 +522,8 @@ const registerNetworkIpc = (mainWindow) => {
       const collectionUid = collection.uid;
       const collectionPath = collection.pathname;
       const folderUid = folder ? folder.uid : null;
+      const brunoConfig = getBrunoConfig(collectionUid);
+      const allowScriptFilesystemAccess = get(brunoConfig, 'filesystemAccess.allow', false);
 
       const onConsoleLog = (type, args) => {
         console[type](...args);
@@ -607,7 +626,8 @@ const registerNetworkIpc = (mainWindow) => {
                 collectionVariables,
                 collectionPath,
                 onConsoleLog,
-                processEnvVars
+                processEnvVars,
+                allowScriptFilesystemAccess
               );
 
               mainWindow.webContents.send('main:script-environment-update', {
@@ -618,7 +638,6 @@ const registerNetworkIpc = (mainWindow) => {
             }
 
             // proxy configuration
-            const brunoConfig = getBrunoConfig(collectionUid);
             const proxyEnabled = get(brunoConfig, 'proxy.enabled', false);
             if (proxyEnabled) {
               const proxyProtocol = get(brunoConfig, 'proxy.protocol');
@@ -709,7 +728,8 @@ const registerNetworkIpc = (mainWindow) => {
                 collectionVariables,
                 collectionPath,
                 onConsoleLog,
-                processEnvVars
+                processEnvVars,
+                allowScriptFilesystemAccess
               );
 
               mainWindow.webContents.send('main:script-environment-update', {
@@ -752,7 +772,8 @@ const registerNetworkIpc = (mainWindow) => {
                 collectionVariables,
                 collectionPath,
                 onConsoleLog,
-                processEnvVars
+                processEnvVars,
+                allowScriptFilesystemAccess
               );
 
               mainWindow.webContents.send('main:run-folder-event', {
@@ -831,7 +852,8 @@ const registerNetworkIpc = (mainWindow) => {
                   collectionVariables,
                   collectionPath,
                   onConsoleLog,
-                  processEnvVars
+                  processEnvVars,
+                  allowScriptFilesystemAccess
                 );
 
                 mainWindow.webContents.send('main:run-folder-event', {
