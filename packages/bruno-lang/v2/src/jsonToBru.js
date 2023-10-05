@@ -151,18 +151,14 @@ ${indentString(body.xml)}
 
   if (body && body.multipartForm && body.multipartForm.length) {
     bru += `body:multipart-form {`;
-    if (enabled(body.multipartForm).length) {
-      bru += `\n${indentString(
-        enabled(body.multipartForm)
-          .map((item) => `${item.name}: ${item.value}`)
-          .join('\n')
-      )}`;
-    }
+    const multipartForms = enabled(body.multipartForm).concat(disabled(body.multipartForm));
 
-    if (disabled(body.multipartForm).length) {
+    if (multipartForms.length) {
       bru += `\n${indentString(
-        disabled(body.multipartForm)
-          .map((item) => `~${item.name}: ${item.value}`)
+        multipartForms
+          // .map((item) => `${item.enabled ? '' : '~'}${item.name}: ${item.value}`)
+          // TODO move this @file part in the file input component
+          .map((item) => `${item.enabled ? '' : '~'}${item.name}: ${item.isFile ? `@file(${item.value})` : item.value}`)
           .join('\n')
       )}`;
     }

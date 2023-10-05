@@ -27,6 +27,16 @@ const MultipartFormParams = ({ item, collection }) => {
     );
   };
 
+  const addFile = () => {
+    dispatch(
+      addMultipartFormParam({
+        itemUid: item.uid,
+        collectionUid: collection.uid,
+        isFile: true
+      })
+    );
+  };
+
   const onSave = () => dispatch(saveRequest(item.uid, collection.uid));
   const handleRun = () => dispatch(sendRequest(item, collection.uid));
   const handleParamChange = (e, _param, type) => {
@@ -38,6 +48,9 @@ const MultipartFormParams = ({ item, collection }) => {
       }
       case 'value': {
         param.value = e.target.value;
+        // if (param.isFile === true) {
+        //   param.value = `@file(${param.value})`;
+        // }
         break;
       }
       case 'enabled': {
@@ -92,24 +105,39 @@ const MultipartFormParams = ({ item, collection }) => {
                       />
                     </td>
                     <td>
-                      <SingleLineEditor
-                        onSave={onSave}
-                        theme={storedTheme}
-                        value={param.value}
-                        onChange={(newValue) =>
-                          handleParamChange(
-                            {
-                              target: {
-                                value: newValue
-                              }
-                            },
-                            param,
-                            'value'
-                          )
-                        }
-                        onRun={handleRun}
-                        collection={collection}
-                      />
+                      {param.isFile === true ? (
+                        // TODO we have to do a component that can handle the '@file(hello.com)
+                        // TODO we have to remove the 'fakepath' that is saved in the bru file
+                        <input
+                          type="file"
+                          autoComplete="off"
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck="false"
+                          value={param.value}
+                          className="mousetrap"
+                          onChange={(e) => handleParamChange(e, param, 'value')}
+                        />
+                      ) : (
+                        <SingleLineEditor
+                          onSave={onSave}
+                          theme={storedTheme}
+                          value={param.value}
+                          onChange={(newValue) =>
+                            handleParamChange(
+                              {
+                                target: {
+                                  value: newValue
+                                }
+                              },
+                              param,
+                              'value'
+                            )
+                          }
+                          onRun={handleRun}
+                          collection={collection}
+                        />
+                      )}
                     </td>
                     <td>
                       <div className="flex items-center">
@@ -131,9 +159,16 @@ const MultipartFormParams = ({ item, collection }) => {
             : null}
         </tbody>
       </table>
-      <button className="btn-add-param text-link pr-2 py-3 mt-2 select-none" onClick={addParam}>
-        + Add Param
-      </button>
+      <div>
+        <button className="btn-add-param text-link pr-2 pt-3 mt-2 select-none" onClick={addParam}>
+          + Add Param
+        </button>
+      </div>
+      <div>
+        <button className="btn-add-param text-link pr-2 pt-3 select-none" onClick={addFile}>
+          + Add File
+        </button>
+      </div>
     </StyledWrapper>
   );
 };

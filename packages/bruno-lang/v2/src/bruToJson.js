@@ -117,7 +117,14 @@ const mapPairListToKeyValPairs = (pairList = [], parseEnabled = true) => {
       enabled = false;
     }
 
+    let isFile = false;
+    if (value && value.length && value.indexOf('@file') === 0) {
+      // TODO uncomment when the component is ok
+      // isFile = true;
+    }
+
     return {
+      isFile,
       name,
       value,
       enabled
